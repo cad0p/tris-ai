@@ -1,10 +1,23 @@
 import secrets                              # imports secure module.
+from copy import deepcopy
+from random import random
 
 
-def startGame(dim=3, robot=True, history=None) -> list:
+class Robot:
+	def __init__(self):
+		self.weights = [random() for i in range(10)]
+		self.history: list = []
+
+
+def startGame(dim=3, robot=None, history=None) -> list:
+
 	if history is None:
 		history = []
+	# save the history in the robot
+	if robot:
+		robot.history = history
 	thisHistory = []
+	history.append(thisHistory)  # [thisHistory] will be modified and history will keep its contents
 	# dimension
 	board = []
 	empty = []
@@ -18,9 +31,9 @@ def startGame(dim=3, robot=True, history=None) -> list:
 	printBoard(board)
 
 	while winner == 0 and len(empty) > 0:
-		winner, thisHistory = newRound(board, empty, robot, thisHistory)
+		winner = newRound(board, empty, robot, thisHistory)
 	# history = stats(history, board, empty, robot, winner)
-	history.append(thisHistory)
+
 	print("The winner is player", winner, '!') if winner != 0 else print("It's a draw! I suggest playing again..")
 	print("History:")
 	printHistory(history, fromSlice=-1) # only get the last result
@@ -56,7 +69,7 @@ def printHistory(history: list, fromSlice: int = None, toSlice: int = None):
 		print("End Game", gameIndex)
 
 
-def newRound(board, empty, robot, history=None) -> (int, list):
+def newRound(board, empty, robot, history=None) -> int:
 	if history is None:
 		history = []
 
@@ -78,11 +91,11 @@ def newRound(board, empty, robot, history=None) -> (int, list):
 			break
 
 	if win(board, 1):
-		history.append(board)
-		return 1, history
+		history.append(deepcopy(board))
+		return 1
 	elif len(empty) == 0:
-		history.append(board)
-		return 0, history
+		history.append(deepcopy(board))
+		return 0
 
 	while not robot:
 		print("Player 2")
@@ -115,14 +128,14 @@ def newRound(board, empty, robot, history=None) -> (int, list):
 			break
 
 	if win(board, 2):
-		history.append(board)
-		return 2, history
+		history.append(deepcopy(board))
+		return 2
 	else:
-		history.append(board)
-		return 0, history
+		history.append(deepcopy(board))
+		return 0
 
 
-def emptySlots(empty, thisMove: (int, int)):
+def emptySlots(empty, thisMove: (int, int)) -> None:
 	empty.remove(thisMove)
 
 
@@ -148,10 +161,11 @@ def win(board, player) -> bool:
 
 # def chooseCell(board, empty, history
 
+trisRobot = Robot()
 
 print("Hi! This is tris.")
 print("You can call me anywhere by calling startGame()")
 print("You can customize some settings that way!")
-gameHistory = startGame()
+gameHistory = startGame(robot=trisRobot)
 while input("Do you want to play again? y/n \n") == 'y':
-	startGame(history=gameHistory)
+	startGame(history=gameHistory, robot=trisRobot)
