@@ -3,6 +3,24 @@ from copy import deepcopy
 from random import random
 
 
+def didRobotWin(game: list) -> int:
+	"""
+
+	:param game:
+	:return: returns -1 if robot lost, 0 if deuse, 1 if robot won
+	"""
+	if len(game) == 5:
+		if not win(game[-1], 1):
+			return 0
+		else:
+			return -1
+	else:
+		if not win(game[-1], 1):
+			return 1
+		else:
+			return -1
+
+
 class Robot:
 	def __init__(self):
 		self.weights = [random() for i in range(10)]
@@ -37,6 +55,7 @@ def startGame(dim=3, robot=None, history=None) -> list:
 	print("The winner is player", winner, '!') if winner != 0 else print("It's a draw! I suggest playing again..")
 	print("History:")
 	printHistory(history, fromSlice=-1) # only get the last result
+	print(didRobotWin(thisHistory))
 
 	return history
 
@@ -75,14 +94,22 @@ def newRound(board, empty, robot, history=None) -> int:
 
 	while True:
 		print("Player 1")
-		row = int(input("Row:"))
-		col = int(input("Col:"))
+		try:
+			row = int(input("Row:"))
+			col = int(input("Col:"))
+		except ValueError:
+			print("Value not valid! Insert a number between 1 and 3 for row and col!")
+			continue
+
 		row -= 1
 		col -= 1
 		thisMove = (row, col)
 		# error
 		if empty.count(thisMove) == 0:
-			print("Cell already occupied!")
+			if 0 <= thisMove[0] < 3 and 0 <= thisMove[1] < 3:
+				print("Cell already occupied!")
+			else:
+				print("Insert a number between 1 and 3 for row and col!")
 		# correct
 		else:
 			board[row][col] = 1
