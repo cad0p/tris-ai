@@ -1,7 +1,7 @@
-import secrets                              # imports secure module.
+# import secrets                              # imports secure module.
 from copy import deepcopy
 from numpy.random import rand
-from numpy import asarray, matmul, unravel_index, argmax, float64, divide
+from numpy import asarray, matmul, unravel_index, argmax, float64, divide, ndarray, array
 
 
 def didRobotWin(game: list) -> int:
@@ -23,9 +23,9 @@ def didRobotWin(game: list) -> int:
 
 
 class Robot:
-	def __init__(self, dim=3):
+	def __init__(self, dim=3, weights: ndarray = None):
 		self.dim = dim
-		self.weights = rand(dim, dim)
+		self.weights = rand(dim, dim) if weights is None else weights
 		print(self.weights)
 		self.history: list = []
 
@@ -37,8 +37,10 @@ class Robot:
 					robotBoard[row][col] = -1
 
 		result = matmul(self.weights, robotBoard)
+		print(result)
 		theMove = unravel_index(argmax(result), result.shape)
-		theMove += 1
+		theMove = (theMove[0] + 1, theMove[1] + 1)
+		print(theMove)
 		return unravel_index(argmax(result), result.shape)
 
 	def good(self):
@@ -220,7 +222,18 @@ def win(board, player) -> bool:
 
 # def chooseCell(board, empty, history
 
-trisRobot = Robot()
+bestWeights = array(
+		[
+			[-453.81391636,  104.43291649,  -40.89840344],
+			[ 127.50819116,  -25.10198367,  -31.08633784],
+			[  85.63707048,  111.88746899, -225.64269217]
+		]
+)
+
+
+trisRobot = Robot(weights=bestWeights)
+# trisRobot = Robot()
+
 
 print("Hi! This is tris.")
 print("You can call me anywhere by calling startGame()")
