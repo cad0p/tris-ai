@@ -1,6 +1,7 @@
 import secrets                              # imports secure module.
 from copy import deepcopy
-from random import random
+from numpy.random import rand
+from numpy import asarray, matmul, unravel_index, argmax, float64, divide
 
 
 def didRobotWin(game: list) -> int:
@@ -22,9 +23,38 @@ def didRobotWin(game: list) -> int:
 
 
 class Robot:
-	def __init__(self):
-		self.weights = [random() for i in range(10)]
+	def __init__(self, dim=3):
+		self.dim = dim
+		self.weights = rand(dim, dim)
+		print(self.weights)
 		self.history: list = []
+
+	def nextMove(self, board):
+		robotBoard = deepcopy(board)
+		for row in range(self.dim):
+			for col in range(self.dim):
+				if robotBoard[row][col] == '':
+					robotBoard[row][col] = -1
+
+		result = matmul(self.weights, robotBoard)
+		theMove = unravel_index(argmax(result), result.shape)
+		theMove += 1
+		return unravel_index(argmax(result), result.shape)
+
+	def good(self):
+		return
+
+	def bad(self):
+		"""
+		Adjusts the weights to try again and have better luck!
+
+		:return: nothing
+		"""
+		correction = rand(self.dim, self.dim)
+		divide(correction, 100)
+		correction -= 0.5
+		self.weights += correction
+		return
 
 
 def startGame(dim=3, robot=None, history=None) -> list:
@@ -142,13 +172,15 @@ def newRound(board, empty, robot, history=None) -> int:
 			break
 	while robot:
 		print("Robot")
-		thisMove = secrets.choice(empty)
+		# thisMove = secrets.choice(empty)
+		thisMove = robot.nextMove(board)
 		row, col = thisMove
-		# error
 		if empty.count(thisMove) == 0:
+			# error
 			print("Cell already occupied!")
-		# correct
+			robot.bad()
 		else:
+			# correct
 			board[row][col] = 2
 			emptySlots(empty, thisMove)
 			printBoard(board)
@@ -194,5 +226,16 @@ print("Hi! This is tris.")
 print("You can call me anywhere by calling startGame()")
 print("You can customize some settings that way!")
 gameHistory = startGame(robot=trisRobot)
-while input("Do you want to play again? y/n \n") == 'y':
+
+
+def displayStats(history, robot=None):
+	if robot:
+		print(robot.weights)
+
+
+while (userInput := input("Do you want to play again? y/n  (press 's' for stats) \n")
+			) not in ['n', 'N']:
+	if userInput in ['s', 'S']:
+		displayStats(gameHistory, robot=trisRobot)
+		continue
 	startGame(history=gameHistory, robot=trisRobot)
