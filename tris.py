@@ -1,5 +1,8 @@
 # import secrets                              # imports secure module.
 from copy import deepcopy
+from time import sleep
+from typing import Union
+
 from numpy.random import rand
 from numpy import asarray, matmul, unravel_index, argmax, float64, divide, ndarray, array
 
@@ -8,7 +11,8 @@ def didRobotWin(game: list) -> int:
 	"""
 
 	:param game:
-	:return: returns -1 if robot lost, 0 if deuse, 1 if robot won
+	:return: returns -1 if robot lost, 0 if deuce, 1 if robot won
+		(in the case that the game is not finished yet, it's going to return 1)
 	"""
 	if len(game) == 5:
 		if not win(game[-1], 1):
@@ -22,26 +26,57 @@ def didRobotWin(game: list) -> int:
 			return -1
 
 
+def convertBoardForRobot(board: list) -> ndarray:
+	convertedBoard = deepcopy(board)
+	for row in range(len(board)):
+		for col in range(len(board[0])):
+			if convertedBoard[row][col] == '':
+				convertedBoard[row][col] = -1
+	return asarray(convertedBoard)
+
+
+def getPlayerMovesFromGame(player: int, game: list) -> list:
+	"""
+
+	:param player: the player
+	:param game: the game you want to analyze player moves
+	:return: [(1,2),(2,2),(3,2)] for example
+	"""
+	playerMoves = []
+	for board in game:
+		for row in range(len(board)):
+			for col in range(len(board)):
+				if (theMove := (row, col)) not in playerMoves and board[row][col] == player:
+					playerMoves.append(theMove)
+	return playerMoves
+
+
 class Robot:
-	def __init__(self, dim=3, weights: ndarray = None):
+	dim: int
+	weights: ndarray
+	history: list
+	board: Union[list, ndarray]
+	choice: tuple  # (2, 1) [ or (3, 2) with natural notation]
+	player: int  # represents the number of the player in the game.
+
+	def __init__(self, dim: int = 3, weights: ndarray = None, player: int = 2):
 		self.dim = dim
 		self.weights = rand(dim, dim) if weights is None else weights
 		print(self.weights)
 		self.history: list = []
+		self.player = player
 
 	def nextMove(self, board):
-		robotBoard = deepcopy(board)
-		for row in range(self.dim):
-			for col in range(self.dim):
-				if robotBoard[row][col] == '':
-					robotBoard[row][col] = -1
+		self.board = convertBoardForRobot(board)
 
-		result = matmul(self.weights, robotBoard)
+		result = matmul(self.weights, self.board)
 		print(result)
+		# this is because it is actually an array
+		# (in case you do it against an axis)
 		theMove = unravel_index(argmax(result), result.shape)
-		theMove = (theMove[0] + 1, theMove[1] + 1)
-		print(theMove)
-		return unravel_index(argmax(result), result.shape)
+		self.choice = theMove
+		print((theMove[0] + 1, theMove[1] + 1))
+		return self.choice
 
 	def good(self):
 		return
@@ -52,14 +87,43 @@ class Robot:
 
 		:return: nothing
 		"""
+		# result = matmul(self.weights, self.board)
 		correction = rand(self.dim, self.dim)
-		divide(correction, 100)
 		correction -= 0.5
+		divide(correction, 100)
 		self.weights += correction
+		# newResult = matmul(self.weights, self.board)
+		# tryNewChoice = unravel_index(argmax(newResult), result.shape)
+		# tryCount = 1
+		# while self.choice == tryNewChoice:
+		# 	# we are trying to lower the value of the maximum element
+		# 	# in the result matrix.
+		# 	print("trying again.. ", tryCount)
+		# 	change = divide(newResult - result, correction)
+		# 	# this is the step-derivative
+		# 	tryNewChoice = argmax(result)[0]
+		# 	tryCount += 1
 		return
 
+	def badGame(self):
+		game = self.history[-1]
+		while didRobotWin(game) != 1:
+			self.bad()
+			player1moves = getPlayerMovesFromGame(1, self.history[-1])
+			game = startGame(robot=self, player1Moves=player1moves)[-1]
 
-def startGame(dim=3, robot=None, history=None) -> list:
+
+def startGame(dim=3, robot=None, history=None, player1Moves: list = None) -> list:
+	"""
+
+	:param dim: the dimension of the board
+	:param robot: if a robot plays in place of the second player
+	:param history: if there is a past history that you want to keep track of
+	:param player1Moves: gets the list of moves from last to first
+		(to easily pop the moves from first to last!)
+		-- edit: now it pops from the beginning, without having to reverse the list
+	:return: the updated history
+	"""
 
 	if history is None:
 		history = []
@@ -80,14 +144,25 @@ def startGame(dim=3, robot=None, history=None) -> list:
 
 	printBoard(board)
 
+	print(player1Moves)
+
 	while winner == 0 and len(empty) > 0:
-		winner = newRound(board, empty, robot, thisHistory)
+		winner = newRound(board, empty, robot, thisHistory,
+			player1Move=player1Moves.pop(0) if player1Moves is not None else None
+		)
 	# history = stats(history, board, empty, robot, winner)
 
-	print("The winner is player", winner, '!') if winner != 0 else print("It's a draw! I suggest playing again..")
+	print("The winner is player", winner, '!') \
+		if winner != 0 else print("It's a draw! I suggest playing again..")
 	print("History:")
 	printHistory(history, fromSlice=-1) # only get the last result
 	print(didRobotWin(thisHistory))
+	if player1Moves is None and didRobotWin(thisHistory) == -1:
+		# # [if player1Moves is None] is to avoid recursion
+		# sleep(2)
+		# # this is to tell the robot he has lost the game
+		# robot.badGame()
+		pass
 
 	return history
 
@@ -120,26 +195,36 @@ def printHistory(history: list, fromSlice: int = None, toSlice: int = None):
 		print("End Game", gameIndex)
 
 
-def newRound(board, empty, robot, history=None) -> int:
+def newRound(board, empty, robot, history=None, player1Move=None) -> int:
 	if history is None:
 		history = []
 
 	while True:
 		print("Player 1")
-		try:
-			row = int(input("Row:"))
-			col = int(input("Col:"))
-		except ValueError:
-			print("Value not valid! Insert a number between 1 and 3 for row and col!")
-			continue
+		row, col = (0, 0)
+		if player1Move:
+			print((player1Move[0] + 1, player1Move[1] + 1))
+		if not player1Move:
+			try:
+				row = int(input("Row:"))
+				col = int(input("Col:"))
 
-		row -= 1
-		col -= 1
-		thisMove = (row, col)
+				row -= 1
+				col -= 1
+			except ValueError:
+				print("Value not valid! Insert a number between 1 and 3 for row and col!")
+				continue
+
+		thisMove = (row, col) if not player1Move else player1Move
+		if player1Move:
+			row, col = player1Move
 		# error
 		if empty.count(thisMove) == 0:
 			if 0 <= thisMove[0] < 3 and 0 <= thisMove[1] < 3:
 				print("Cell already occupied!")
+				if player1Move:
+					# player 1 has lost because he can't make that move!
+					return -1
 			else:
 				print("Insert a number between 1 and 3 for row and col!")
 		# correct
@@ -180,6 +265,7 @@ def newRound(board, empty, robot, history=None) -> int:
 		if empty.count(thisMove) == 0:
 			# error
 			print("Cell already occupied!")
+			printBoard(board)
 			robot.bad()
 		else:
 			# correct
@@ -202,6 +288,8 @@ def emptySlots(empty, thisMove: (int, int)) -> None:
 
 def win(board, player) -> bool:
 	dim = len(board)
+	# print("board")
+	# printBoard(board)
 	# initialize diagonals
 	diag1 = diag2 = True
 	for i in range(dim):
@@ -231,8 +319,8 @@ bestWeights = array(
 )
 
 
-trisRobot = Robot(weights=bestWeights)
-# trisRobot = Robot()
+# trisRobot = Robot(weights=bestWeights)
+trisRobot = Robot()
 
 
 print("Hi! This is tris.")
