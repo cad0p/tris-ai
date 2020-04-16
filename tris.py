@@ -1,5 +1,6 @@
 # import secrets                              # imports secure module.
 from copy import deepcopy
+from math import ceil
 from time import sleep
 from typing import Union
 
@@ -14,13 +15,18 @@ def didRobotWin(game: list) -> int:
 	:return: returns -1 if robot lost, 0 if deuce, 1 if robot won
 		(in the case that the game is not finished yet, it's going to return 1)
 	"""
-	if len(game) == 5:
-		if not win(game[-1], 1):
+	finalBoard = game[-1]
+	dim = len(finalBoard)
+	if len(game) == ceil(dim*dim / 2.0):
+		# in the case of dim == 3
+		# ceil(..) is 5, and it's the max
+		# number of rounds in a game
+		if not win(finalBoard, 1):
 			return 0
 		else:
 			return -1
 	else:
-		if not win(game[-1], 1):
+		if not win(finalBoard, 1):
 			return 1
 		else:
 			return -1
@@ -288,14 +294,12 @@ def emptySlots(empty, thisMove: (int, int)) -> None:
 
 def win(board, player) -> bool:
 	dim = len(board)
-	# print("board")
-	# printBoard(board)
 	# initialize diagonals
 	diag1 = diag2 = True
 	for i in range(dim):
 		# columns, rows
-		if ([row[i] for row in board].count(player) == 3 or
-					board[i].count(player) == 3):
+		if ([row[i] for row in board].count(player) == dim or
+					board[i].count(player) == dim):
 			return True
 		diag1 = diag1 and (board[i][i] == player)
 		diag2 = diag2 and (board[i][dim-1-i] == player)
@@ -318,15 +322,18 @@ bestWeights = array(
 		]
 )
 
+trisSize = 4
+
 
 # trisRobot = Robot(weights=bestWeights)
-trisRobot = Robot()
+# trisRobot = Robot(dim=trisSize)
+trisRobot = None
 
 
 print("Hi! This is tris.")
 print("You can call me anywhere by calling startGame()")
 print("You can customize some settings that way!")
-gameHistory = startGame(robot=trisRobot)
+gameHistory = startGame(robot=trisRobot, dim=trisSize)
 
 
 def displayStats(history, robot=None):
@@ -339,4 +346,7 @@ while (userInput := input("Do you want to play again? y/n  (press 's' for stats)
 	if userInput in ['s', 'S']:
 		displayStats(gameHistory, robot=trisRobot)
 		continue
-	startGame(history=gameHistory, robot=trisRobot)
+	startGame(history=gameHistory,
+						robot=trisRobot,
+						dim=trisSize
+	)
